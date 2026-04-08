@@ -12,12 +12,14 @@ import (
 
 // CreateInfo holds parameters for creating a sandbox.
 type CreateInfo struct {
-	TemplateID string
-	Timeout    int32
-	Metadata   string
-	Detach     bool
-	EnvVars    []string // KEY=VALUE pairs
-	AutoPause  bool
+	TemplateID      string
+	Timeout         int32
+	Metadata        string
+	Detach          bool
+	EnvVars         []string // KEY=VALUE pairs
+	AutoPause       bool
+	InjectionRuleID []string
+	InlineInjection []string
 }
 
 // Create creates a new sandbox and connects to its terminal.
@@ -55,6 +57,14 @@ func Create(info CreateInfo) {
 	if info.AutoPause {
 		params.AutoPause = &info.AutoPause
 	}
+	injections, err := buildSandboxInjections(info.InjectionRuleID, info.InlineInjection)
+	if err != nil {
+		sbClient.PrintError("%v", err)
+		return
+	}
+	if len(injections) > 0 {
+		params.Injections = &injections
+	}
 
 	fmt.Printf("Creating sandbox from template %s...\n", info.TemplateID)
 	sb, _, err := client.CreateAndWait(ctx, params)
@@ -87,4 +97,78 @@ func Create(info CreateInfo) {
 	}()
 
 	runTerminalSession(ctx, sb)
+}
+
+func buildSandboxInjections(ruleIDs, inlineSpecs []string) ([]sandbox.SandboxInjectionSpec, error) {
+	if len(ruleIDs) == 0 && len(inlineSpecs) == 0 {
+		return nil, nil
+	}
+
+	injections := make([]sandbox.SandboxInjectionSpec, 0, len(ruleIDs)+len(inlineSpecs))
+	for _, ruleID := range ruleIDs {
+		trimmed := strings.TrimSpace(ruleID)
+		if trimmed == "" {
+			return nil, fmt.Errorf("injection rule ID cannot be empty")
+		}
+		injections = append(injections, sandbox.SandboxInjectionSpec{
+			ByID: &trimmed,
+		})
+	}
+	for _, spec := range inlineSpecs {
+		injection, err := parseInlineSandboxInjection(spec)
+		if err != nil {
+			return nil, err
+		}
+		injections = append(injections, injection)
+	}
+	return injections, nil
+}
+
+func parseInlineSandboxInjection(spec string) (sandbox.SandboxInjectionSpec, error) {
+	fields := parseInlineInjectionFields(spec)
+	parts, err := sbClient.BuildInjectionParts(fields["type"], fields["api-key"], fields["base-url"], parseInlineHeaders(fields["headers"]))
+	if err != nil {
+		return sandbox.SandboxInjectionSpec{}, fmt.Errorf("invalid inline injection spec: %w", err)
+	}
+	return sandbox.SandboxInjectionSpec{
+		OpenAI:    parts.OpenAI,
+		Anthropic: parts.Anthropic,
+		Gemini:    parts.Gemini,
+		HTTP:      parts.HTTP,
+	}, nil
+}
+
+func parseInlineInjectionFields(spec string) map[string]string {
+	const headersKey = "headers="
+
+	fields := make(map[string]string)
+	headersSpec := ""
+	if idx := strings.Index(spec, ","+headersKey); idx >= 0 {
+		headersSpec = spec[idx+len(","+headersKey):]
+		spec = spec[:idx]
+	}
+	if strings.HasPrefix(spec, headersKey) {
+		headersSpec = spec[len(headersKey):]
+		spec = ""
+	}
+	for _, part := range strings.Split(spec, ",") {
+		key, value, ok := strings.Cut(part, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" {
+			continue
+		}
+		fields[key] = value
+	}
+	if strings.TrimSpace(headersSpec) != "" {
+		fields["headers"] = headersSpec
+	}
+	return fields
+}
+
+func parseInlineHeaders(raw string) map[string]string {
+	return sbClient.ParseMetadataMap(raw)
 }
