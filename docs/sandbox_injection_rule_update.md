@@ -3,7 +3,7 @@
 ## 命令格式
 
 ```bash
-qshell sandbox injection-rule update <ruleID> [--name <name>] [--type <openai|anthropic|gemini|http>] [--api-key <apiKey>] [--base-url <baseURL>] [--headers <headers>]
+qshell sandbox injection-rule update <ruleID> [--name <name>] [--type <openai|anthropic|gemini|qiniu|http>] [--api-key <apiKey>] [--base-url <baseURL>] [--headers <headers>]
 ```
 
 ## 查看帮助
@@ -36,6 +36,12 @@ $ qshell sandbox injection-rule update rule-xxxxxxxxxxxx --name new-name
 
 ```bash
 $ qshell sandbox injection-rule update rule-xxxxxxxxxxxx --type gemini --api-key sk-gem --base-url https://gemini-proxy.example.com
+```
+
+更新为七牛 AI API 注入规则：
+
+```bash
+$ qshell sandbox injection-rule update rule-xxxxxxxxxxxx --type qiniu --api-key ak-new
 ```
 
 更新自定义 HTTP 请求头：

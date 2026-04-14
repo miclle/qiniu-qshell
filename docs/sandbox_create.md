@@ -29,9 +29,9 @@ $ qshell sandbox create --doc
 - `--inline-injection`：创建沙箱时附加的内联注入配置，可多次指定，格式为 `type=<type>,api-key=<key>,base-url=<url>,headers=<k1=v1,k2=v2>`
 
 内联注入说明：
-- `type` 支持 `openai`、`anthropic`、`gemini`、`http`
-- `api-key` 可用于 `openai`、`anthropic`、`gemini`
-- `base-url` 可用于覆盖默认目标地址；`type=http` 时必填
+- `type` 支持 `openai`、`anthropic`、`gemini`、`qiniu`、`http`
+- `api-key` 可用于 `openai`、`anthropic`、`gemini`、`qiniu`
+- `base-url` 可用于覆盖默认目标地址；`type=http` 时必填，`type=qiniu` 默认目标地址为 `api.qnaigc.com`
 - `headers` 仅用于 `type=http`，多个请求头使用逗号分隔，例如 `headers=Authorization=Bearer token,X-Env=prod`
 - `headers` 建议放在内联配置的最后一个字段，避免和其他顶层字段分隔符冲突
 

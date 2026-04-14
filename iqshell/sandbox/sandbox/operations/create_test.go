@@ -102,3 +102,36 @@ func TestBuildSandboxInjections_RejectsUnsupportedInlineType(t *testing.T) {
 		t.Fatal("expected unsupported inline injection type to fail")
 	}
 }
+
+func TestBuildSandboxInjections_WithInlineQiniu(t *testing.T) {
+	injections, err := buildSandboxInjections(nil, []string{"type=qiniu,api-key=sk-qiniu,base-url=https://api.qnaigc-proxy.example.com"})
+	if err != nil {
+		t.Fatalf("buildSandboxInjections() error = %v", err)
+	}
+	if len(injections) != 1 {
+		t.Fatalf("buildSandboxInjections() len = %d, want 1", len(injections))
+	}
+	if injections[0].Qiniu == nil {
+		t.Fatalf("first injection = %+v, want qiniu injection", injections[0])
+	}
+	if injections[0].Qiniu.APIKey == nil || *injections[0].Qiniu.APIKey != "sk-qiniu" {
+		t.Fatalf("qiniu api key = %v, want sk-qiniu", injections[0].Qiniu.APIKey)
+	}
+}
+
+func TestParseInlineInjectionFields_HeadersOnly(t *testing.T) {
+	fields := parseInlineInjectionFields("headers=Authorization=Bearer token,X-Env=prod")
+	if got := fields["headers"]; got != "Authorization=Bearer token,X-Env=prod" {
+		t.Fatalf("headers = %q, want %q", got, "Authorization=Bearer token,X-Env=prod")
+	}
+}
+
+func TestParseInlineInjectionFields_HeadersWithOtherFields(t *testing.T) {
+	fields := parseInlineInjectionFields("type=http,base-url=https://api.example.com,headers=Authorization=Bearer token,X-Env=prod")
+	if fields["type"] != "http" || fields["base-url"] != "https://api.example.com" {
+		t.Fatalf("fields = %v, want type and base-url parsed", fields)
+	}
+	if got := fields["headers"]; got != "Authorization=Bearer token,X-Env=prod" {
+		t.Fatalf("headers = %q, want %q", got, "Authorization=Bearer token,X-Env=prod")
+	}
+}

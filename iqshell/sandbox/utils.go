@@ -97,8 +97,11 @@ type InjectionParts struct {
 	OpenAI    *sdkSandbox.OpenAIInjection
 	Anthropic *sdkSandbox.AnthropicInjection
 	Gemini    *sdkSandbox.GeminiInjection
+	Qiniu     *sdkSandbox.QiniuInjection
 	HTTP      *sdkSandbox.HTTPInjection
 }
+
+const supportedInjectionTypes = "openai, anthropic, gemini, qiniu, http"
 
 // BuildInjectionParts builds a provider-specific injection payload from the given inputs.
 func BuildInjectionParts(typ, apiKey, baseURL string, headers map[string]string) (InjectionParts, error) {
@@ -124,27 +127,49 @@ func BuildInjectionParts(typ, apiKey, baseURL string, headers map[string]string)
 				BaseURL: optionalString(baseURL),
 			},
 		}, nil
-	case "http":
-		trimmedBaseURL := strings.TrimSpace(baseURL)
-		if trimmedBaseURL == "" {
-			return InjectionParts{}, fmt.Errorf("base URL is required when injection type is http")
+	case "qiniu":
+		validatedBaseURL, err := validateBaseURL(baseURL, false)
+		if err != nil {
+			return InjectionParts{}, err
 		}
-		parsedURL, err := url.Parse(trimmedBaseURL)
-		if err != nil || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
-			return InjectionParts{}, fmt.Errorf("base URL must be a valid http/https URL")
+		return InjectionParts{
+			Qiniu: &sdkSandbox.QiniuInjection{
+				APIKey:  optionalString(apiKey),
+				BaseURL: optionalString(validatedBaseURL),
+			},
+		}, nil
+	case "http":
+		validatedBaseURL, err := validateBaseURL(baseURL, true)
+		if err != nil {
+			return InjectionParts{}, err
 		}
 		httpInjection := &sdkSandbox.HTTPInjection{
-			BaseURL: trimmedBaseURL,
+			BaseURL: validatedBaseURL,
 		}
 		if len(headers) > 0 {
 			httpInjection.Headers = &headers
 		}
 		return InjectionParts{HTTP: httpInjection}, nil
 	case "":
-		return InjectionParts{}, fmt.Errorf("injection type is required and must be one of: openai, anthropic, gemini, http")
+		return InjectionParts{}, fmt.Errorf("injection type is required and must be one of: %s", supportedInjectionTypes)
 	default:
-		return InjectionParts{}, fmt.Errorf("unsupported injection type %q, must be one of: openai, anthropic, gemini, http", typ)
+		return InjectionParts{}, fmt.Errorf("unsupported injection type %q, must be one of: %s", typ, supportedInjectionTypes)
 	}
+}
+
+func validateBaseURL(baseURL string, required bool) (string, error) {
+	trimmedBaseURL := strings.TrimSpace(baseURL)
+	if trimmedBaseURL == "" {
+		if required {
+			return "", fmt.Errorf("base URL is required when injection type is http")
+		}
+		return "", nil
+	}
+	parsedURL, err := url.Parse(trimmedBaseURL)
+	if err != nil || parsedURL.Host == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		return "", fmt.Errorf("base URL must be a valid http/https URL")
+	}
+	return trimmedBaseURL, nil
 }
 
 func optionalString(value string) *string {

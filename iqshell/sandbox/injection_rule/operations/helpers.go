@@ -13,6 +13,7 @@ const (
 	injectionTypeOpenAI    = "openai"
 	injectionTypeAnthropic = "anthropic"
 	injectionTypeGemini    = "gemini"
+	injectionTypeQiniu     = "qiniu"
 	injectionTypeHTTP      = "http"
 )
 
@@ -32,6 +33,7 @@ func buildInjectionSpec(input injectionInput) (sandbox.InjectionSpec, error) {
 		OpenAI:    parts.OpenAI,
 		Anthropic: parts.Anthropic,
 		Gemini:    parts.Gemini,
+		Qiniu:     parts.Qiniu,
 		HTTP:      parts.HTTP,
 	}, nil
 }
@@ -48,6 +50,8 @@ func formatInjectionType(spec sandbox.InjectionSpec) string {
 		return injectionTypeAnthropic
 	case spec.Gemini != nil:
 		return injectionTypeGemini
+	case spec.Qiniu != nil:
+		return injectionTypeQiniu
 	case spec.HTTP != nil:
 		return injectionTypeHTTP
 	default:
@@ -63,6 +67,8 @@ func formatInjectionTarget(spec sandbox.InjectionSpec) string {
 		return optionalValue(spec.Anthropic.BaseURL, "api.anthropic.com")
 	case spec.Gemini != nil:
 		return optionalValue(spec.Gemini.BaseURL, "generativelanguage.googleapis.com")
+	case spec.Qiniu != nil:
+		return optionalValue(spec.Qiniu.BaseURL, "api.qnaigc.com")
 	case spec.HTTP != nil:
 		return spec.HTTP.BaseURL
 	default:
@@ -90,6 +96,8 @@ func hasAPIKey(spec sandbox.InjectionSpec) bool {
 		return spec.Anthropic.APIKey != nil && strings.TrimSpace(*spec.Anthropic.APIKey) != ""
 	case spec.Gemini != nil:
 		return spec.Gemini.APIKey != nil && strings.TrimSpace(*spec.Gemini.APIKey) != ""
+	case spec.Qiniu != nil:
+		return spec.Qiniu.APIKey != nil && strings.TrimSpace(*spec.Qiniu.APIKey) != ""
 	default:
 		return false
 	}

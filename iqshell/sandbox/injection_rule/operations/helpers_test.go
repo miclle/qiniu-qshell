@@ -109,3 +109,59 @@ func TestFormatInjectionSummaryHTTP(t *testing.T) {
 		t.Fatalf("formatInjectionHeaders() = %q, want header key list", got)
 	}
 }
+
+func TestFormatInjectionSummaryQiniu(t *testing.T) {
+	baseURL := " https://qiniu-proxy.example.com "
+	spec := sandbox.InjectionSpec{
+		Qiniu: &sandbox.QiniuInjection{BaseURL: &baseURL},
+	}
+
+	if got := formatInjectionType(spec); got != "qiniu" {
+		t.Fatalf("formatInjectionType() = %q, want %q", got, "qiniu")
+	}
+	if got := formatInjectionTarget(spec); got != "https://qiniu-proxy.example.com" {
+		t.Fatalf("formatInjectionTarget() = %q, want %q", got, "https://qiniu-proxy.example.com")
+	}
+}
+
+func TestFormatInjectionTargetQiniuDefault(t *testing.T) {
+	spec := sandbox.InjectionSpec{Qiniu: &sandbox.QiniuInjection{}}
+	if got := formatInjectionTarget(spec); got != "api.qnaigc.com" {
+		t.Fatalf("formatInjectionTarget() = %q, want %q", got, "api.qnaigc.com")
+	}
+}
+
+func TestShouldUpdateInjection(t *testing.T) {
+	if shouldUpdateInjection(injectionInput{}) {
+		t.Fatal("shouldUpdateInjection() = true, want false")
+	}
+	if !shouldUpdateInjection(injectionInput{Type: " qiniu "}) {
+		t.Fatal("shouldUpdateInjection() = false, want true when type is set")
+	}
+	if !shouldUpdateInjection(injectionInput{APIKey: "sk"}) {
+		t.Fatal("shouldUpdateInjection() = false, want true when api key is set")
+	}
+}
+
+func TestHasAPIKey(t *testing.T) {
+	key := "sk-qiniu"
+	spec := sandbox.InjectionSpec{Qiniu: &sandbox.QiniuInjection{APIKey: &key}}
+	if !hasAPIKey(spec) {
+		t.Fatal("hasAPIKey() = false, want true for qiniu with api key")
+	}
+
+	spec = sandbox.InjectionSpec{HTTP: &sandbox.HTTPInjection{BaseURL: "https://api.example.com"}}
+	if hasAPIKey(spec) {
+		t.Fatal("hasAPIKey() = true, want false for http injection")
+	}
+}
+
+func TestOptionalValue(t *testing.T) {
+	if got := optionalValue(nil, "fallback"); got != "fallback" {
+		t.Fatalf("optionalValue(nil) = %q, want %q", got, "fallback")
+	}
+	raw := "  value  "
+	if got := optionalValue(&raw, "fallback"); got != "value" {
+		t.Fatalf("optionalValue(trimmed) = %q, want %q", got, "value")
+	}
+}
