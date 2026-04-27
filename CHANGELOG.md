@@ -9,7 +9,7 @@
 1. 升级 `github.com/qiniu/go-sdk/v7` 到 `v7.26.10`
 
 ## 修复
-1. 修复 `sandbox template build --rebuild` 未正确申请新的 waiting build 的问题
+1. 修复 `sandbox template build` 指定 `--template-id` 重建时未正确申请新的 waiting build 的问题
 2. 修正 sandbox 相关命令帮助信息与参数校验
 
 # 2.19.3
