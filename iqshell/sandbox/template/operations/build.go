@@ -11,6 +11,7 @@ import (
 	"github.com/qiniu/go-sdk/v7/sandbox"
 
 	sbClient "github.com/qiniu/qshell/v2/iqshell/sandbox"
+	"github.com/qiniu/qshell/v2/iqshell/sandbox/template/config"
 	"github.com/qiniu/qshell/v2/iqshell/sandbox/template/dockerfile"
 )
 
@@ -45,18 +46,87 @@ type BuildInfo struct {
 
 	// NoCache 强制完整构建，忽略缓存。
 	NoCache bool
+	// NoCacheChanged 表示 CLI 是否显式设置了 --no-cache。
+	NoCacheChanged bool
 
 	// Dockerfile 是 Dockerfile 的路径（启用 v2 Dockerfile 构建）。
 	Dockerfile string
 
 	// Path 是构建上下文目录（默认为 Dockerfile 所在目录）。
 	Path string
+
+	// ConfigPath 是 qshell.sandbox.toml 的显式路径。
+	// 为空时自动在当前工作目录查找。
+	ConfigPath string
 }
 
 // Build 创建或重新构建模板。
 // 如果提供了 TemplateID，则对已有模板启动新构建。
 // 否则，使用给定的 Name 创建新模板并启动构建。
 func Build(info BuildInfo) {
+	// 在合并配置前捕获"CLI 未提供 TemplateID"，以便后续判断是否需要回写。
+	noIDBeforeMerge := info.TemplateID == ""
+
+	// 加载配置文件并合并（CLI > file > default）
+	var cfg *config.FileConfig
+	if info.ConfigPath != "" {
+		loaded, cErr := config.Load(info.ConfigPath)
+		if cErr != nil {
+			sbClient.PrintError("load config: %v", cErr)
+			return
+		}
+		if loaded == nil {
+			sbClient.PrintError("config file not found: %s", info.ConfigPath)
+			return
+		}
+		cfg = loaded
+	} else {
+		loaded, cErr := config.LoadFromCwd()
+		if cErr != nil {
+			sbClient.PrintError("load config: %v", cErr)
+			return
+		}
+		cfg = loaded
+	}
+
+	if cfg != nil {
+		fields := config.BuildFields{
+			TemplateID:     info.TemplateID,
+			Name:           info.Name,
+			Dockerfile:     info.Dockerfile,
+			Path:           info.Path,
+			FromImage:      info.FromImage,
+			FromTemplate:   info.FromTemplate,
+			StartCmd:       info.StartCmd,
+			ReadyCmd:       info.ReadyCmd,
+			CPUCount:       info.CPUCount,
+			MemoryMB:       info.MemoryMB,
+			NoCache:        info.NoCache,
+			NoCacheChanged: info.NoCacheChanged,
+		}
+		overrides := cfg.ApplyTo(&fields)
+		info.TemplateID = fields.TemplateID
+		info.Name = fields.Name
+		info.Dockerfile = fields.Dockerfile
+		info.Path = fields.Path
+		info.FromImage = fields.FromImage
+		info.FromTemplate = fields.FromTemplate
+		info.StartCmd = fields.StartCmd
+		info.ReadyCmd = fields.ReadyCmd
+		info.CPUCount = fields.CPUCount
+		info.MemoryMB = fields.MemoryMB
+		info.NoCache = fields.NoCache
+
+		for _, key := range overrides {
+			fmt.Fprintf(os.Stderr, "[config] CLI overrides %s from %s\n", key, cfg.SourcePath())
+		}
+	}
+
+	if err := validateBuildSourceSelection(info); err != nil {
+		sbClient.PrintError("%v", err)
+		return
+	}
+
 	client, err := sbClient.NewSandboxClient()
 	if err != nil {
 		sbClient.PrintError("%v", err)
@@ -134,12 +204,6 @@ func Build(info BuildInfo) {
 			return
 		}
 	} else {
-		// 验证构建来源
-		if info.FromImage == "" && info.FromTemplate == "" {
-			sbClient.PrintError("--from-image, --from-template, or --dockerfile is required")
-			return
-		}
-
 		buildParams := sandbox.StartTemplateBuildParams{}
 		if info.FromImage != "" {
 			buildParams.FromImage = &info.FromImage
@@ -166,6 +230,7 @@ func Build(info BuildInfo) {
 	}
 
 	if !info.Wait {
+		writeTemplateIDToConfigIfNeeded(cfg, noIDBeforeMerge, templateID)
 		fmt.Printf("Build started. Use 'qshell sandbox template builds %s %s' to check status.\n", templateID, buildID)
 		return
 	}
@@ -205,6 +270,7 @@ func Build(info BuildInfo) {
 				sbClient.PrintError("build failed")
 			} else {
 				sbClient.PrintSuccess("Build completed!")
+				writeTemplateIDToConfigIfNeeded(cfg, noIDBeforeMerge, templateID)
 			}
 			fmt.Printf("Template ID:  %s\n", buildInfo.TemplateID)
 			fmt.Printf("Build ID:     %s\n", buildInfo.BuildID)
@@ -223,6 +289,18 @@ func Build(info BuildInfo) {
 		case <-time.After(3 * time.Second):
 		}
 	}
+}
+
+func writeTemplateIDToConfigIfNeeded(cfg *config.FileConfig, noIDBeforeMerge bool, templateID string) {
+	if cfg == nil || !noIDBeforeMerge || cfg.SourcePath() == "" {
+		return
+	}
+	if wErr := config.WriteTemplateID(cfg.SourcePath(), templateID); wErr != nil {
+		fmt.Fprintf(os.Stderr, "[config] warning: failed to write template_id to %s: %v\n",
+			cfg.SourcePath(), wErr)
+		return
+	}
+	sbClient.PrintSuccess("Written template_id to %s (please commit this file)", cfg.SourcePath())
 }
 
 // buildFromDockerfile 处理 v2 Dockerfile 构建流程：
@@ -287,10 +365,7 @@ func buildFromDockerfile(ctx context.Context, client *sandbox.Client, templateID
 	}
 
 	// 构建参数
-	buildParams := sandbox.StartTemplateBuildParams{
-		FromImage: &result.BaseImage,
-		Steps:     &result.Steps,
-	}
+	buildParams := buildParamsFromDockerfileResult(result, info)
 
 	// 应用来自 Dockerfile 或 CLI 覆盖的启动/就绪命令
 	startCmd := result.StartCmd
@@ -320,6 +395,33 @@ func buildFromDockerfile(ctx context.Context, client *sandbox.Client, templateID
 	}
 
 	return nil
+}
+
+func validateBuildSourceSelection(info BuildInfo) error {
+	if info.FromImage != "" && info.FromTemplate != "" {
+		return fmt.Errorf("cannot specify both --from-image and --from-template")
+	}
+	if info.Dockerfile == "" && info.FromImage == "" && info.FromTemplate == "" {
+		return fmt.Errorf("--from-image, --from-template, or --dockerfile is required")
+	}
+	return nil
+}
+
+func buildParamsFromDockerfileResult(result *dockerfile.ConvertResult, info BuildInfo) sandbox.StartTemplateBuildParams {
+	buildParams := sandbox.StartTemplateBuildParams{
+		Steps: &result.Steps,
+	}
+
+	switch {
+	case info.FromTemplate != "":
+		buildParams.FromTemplate = &info.FromTemplate
+	case info.FromImage != "":
+		buildParams.FromImage = &info.FromImage
+	default:
+		buildParams.FromImage = &result.BaseImage
+	}
+
+	return buildParams
 }
 
 // dockerfileForRebuild 返回 rebuild 请求所需的 Dockerfile 文本。

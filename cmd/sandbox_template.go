@@ -74,12 +74,16 @@ var templateGetCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 			if iqshell.ShowDocumentIfNeeded(cfg) {
 				return
 			}
-			if len(args) != 1 {
+			if len(args) > 1 {
 				_ = cmd.Usage()
 				return
 			}
+			id := ""
+			if len(args) == 1 {
+				id = args[0]
+			}
 			operations.Get(operations.GetInfo{
-				TemplateID: args[0],
+				TemplateID: id,
 			})
 		},
 	}
@@ -106,10 +110,6 @@ var templateDeleteCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateDeleteType
 			if iqshell.ShowDocumentIfNeeded(cfg) {
-				return
-			}
-			if len(args) == 0 && !info.Select {
-				_ = cmd.Usage()
 				return
 			}
 			info.TemplateIDs = args
@@ -160,8 +160,16 @@ Creating a new template supports three build modes:
   2. --from-template: Build from an existing template
   3. --dockerfile: Build from a Dockerfile (v2 build system)
 
+--dockerfile can also be combined with --from-template or --from-image to apply
+Dockerfile RUN/COPY/ENV steps on top of the selected base. When combined with
+--from-template, the Dockerfile FROM line is parsed but ignored as the base.
+
 Rebuilding an existing template (--template-id) requires --dockerfile
-because the rebuild API must carry the Dockerfile content in the request body.`,
+because the rebuild API must carry the Dockerfile content in the request body.
+
+参数可通过 qshell.sandbox.toml 持久化；CLI flag 优先于配置文件。
+首次构建成功后，qshell 会自动把 template_id 回写到配置文件，
+后续重建只需 qshell sandbox template build 即可完成幂等重建。`,
 		Example: `  # Create and build a new template from a Docker image
   qshell sandbox template build --name my-template --from-image ubuntu:22.04 --wait
   qshell sbx tpl bd --name my-template --from-image ubuntu:22.04 --wait
@@ -174,18 +182,29 @@ because the rebuild API must carry the Dockerfile content in the request body.`,
   qshell sandbox template build --name my-template --dockerfile ./Dockerfile --path ./context --wait
   qshell sbx tpl bd --name my-template --dockerfile ./Dockerfile --path ./context --wait
 
+  # Build from an existing template and apply Dockerfile steps on top
+  qshell sandbox template build --name claude --from-template agents-base --dockerfile ./Dockerfile --wait
+  qshell sbx tpl bd --name claude --from-template agents-base --dockerfile ./Dockerfile --wait
+
   # Rebuild an existing template (Dockerfile required)
   qshell sandbox template build --template-id tmpl-xxxxxxxxxxxx --dockerfile ./Dockerfile --wait
   qshell sbx tpl bd --template-id tmpl-xxxxxxxxxxxx --dockerfile ./Dockerfile --wait
 
   # Force rebuild without cache
   qshell sandbox template build --template-id tmpl-xxxxxxxxxxxx --dockerfile ./Dockerfile --no-cache --wait
-  qshell sbx tpl bd --template-id tmpl-xxxxxxxxxxxx --dockerfile ./Dockerfile --no-cache --wait`,
+  qshell sbx tpl bd --template-id tmpl-xxxxxxxxxxxx --dockerfile ./Dockerfile --no-cache --wait
+
+  # 使用 qshell.sandbox.toml（当前目录）
+  qshell sandbox template build --wait
+
+  # 显式指定配置文件
+  qshell sandbox template build --config ./configs/prod.toml --wait`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateBuildType
 			if iqshell.ShowDocumentIfNeeded(cfg) {
 				return
 			}
+			info.NoCacheChanged = cmd.Flags().Changed("no-cache")
 			operations.Build(info)
 		},
 	}
@@ -201,6 +220,7 @@ because the rebuild API must carry the Dockerfile content in the request body.`,
 	cmd.Flags().BoolVar(&info.NoCache, "no-cache", false, "force full rebuild ignoring cache")
 	cmd.Flags().StringVar(&info.Dockerfile, "dockerfile", "", "path to Dockerfile (enables v2 build)")
 	cmd.Flags().StringVar(&info.Path, "path", "", "build context directory (defaults to Dockerfile's parent)")
+	cmd.Flags().StringVar(&info.ConfigPath, "config", "", "path to qshell.sandbox.toml (defaults to ./qshell.sandbox.toml if present)")
 	return cmd
 }
 
@@ -220,10 +240,6 @@ var templatePublishCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplatePublishType
 			if iqshell.ShowDocumentIfNeeded(cfg) {
-				return
-			}
-			if len(args) == 0 && !info.Select {
-				_ = cmd.Usage()
 				return
 			}
 			info.TemplateIDs = args
@@ -251,10 +267,6 @@ var templateUnpublishCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateUnpublishType
 			if iqshell.ShowDocumentIfNeeded(cfg) {
-				return
-			}
-			if len(args) == 0 && !info.Select {
-				_ = cmd.Usage()
 				return
 			}
 			info.TemplateIDs = args
