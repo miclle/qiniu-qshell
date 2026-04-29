@@ -9,8 +9,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/qiniu/go-sdk/v7/auth"
 	"github.com/qiniu/go-sdk/v7/sandbox"
 	"github.com/subosito/gotenv"
+
+	"github.com/qiniu/qshell/v2/iqshell/common/workspace"
 )
 
 // keepalivePingIntervalSec matches the JS SDK's KEEPALIVE_PING_INTERVAL_SEC (50s).
@@ -40,6 +43,10 @@ const (
 	// E2B-compatible environment variables (fallback).
 	EnvE2BAPIURL = "E2B_API_URL"
 	EnvE2BAPIKey = "E2B_API_KEY"
+
+	// Qiniu AK/SK environment variables (fallback when no qshell account is configured).
+	EnvQiniuAccessKey = "QINIU_ACCESS_KEY"
+	EnvQiniuSecretKey = "QINIU_SECRET_KEY"
 )
 
 // loadDotEnv loads variables from the .env file in the current directory.
@@ -63,20 +70,52 @@ func loadDotEnv() {
 	}
 }
 
-// NewSandboxClient creates a new sandbox client by reading configuration from environment variables.
-// It first loads .env file from the current directory (OS env vars take priority).
-// Priority: QINIU_SANDBOX_API_URL / QINIU_API_KEY > E2B_API_URL / E2B_API_KEY.
+// NewSandboxClient creates a sandbox client for sandbox runtime / template operations.
+// API Key is required; AK/SK Credentials are included when available.
+//
+// Credential sources (each independent):
+//   - API Key: env QINIU_API_KEY > E2B_API_KEY (.env file is also consulted).
+//   - AK/SK:   qshell active account (~/.qshell) > env QINIU_ACCESS_KEY/QINIU_SECRET_KEY.
+//
+// Returns an error if API Key is missing — sandbox runtime / template endpoints
+// only accept API Key authentication.
 func NewSandboxClient() (*sandbox.Client, error) {
 	loadDotEnv()
 
 	apiKey, endpoint := resolveConfig()
 	if apiKey == "" {
-		return nil, fmt.Errorf("API key not configured, please set %s or %s environment variable", EnvQiniuAPIKey, EnvE2BAPIKey)
+		return nil, fmt.Errorf("API key not configured for sandbox/template operations: please set %s or %s environment variable", EnvQiniuAPIKey, EnvE2BAPIKey)
 	}
 
+	return buildSandboxClient(apiKey, endpoint, resolveCredentials())
+}
+
+// NewInjectionRuleClient creates a sandbox client for injection rule operations.
+// AK/SK Credentials are required; API Key is included when available.
+//
+// Credential sources (see NewSandboxClient for details).
+//
+// Returns an error if AK/SK is missing — injection rule endpoints sign requests
+// with Qiniu credentials and cannot fall back to API Key.
+func NewInjectionRuleClient() (*sandbox.Client, error) {
+	loadDotEnv()
+
+	creds := resolveCredentials()
+	if creds == nil {
+		return nil, fmt.Errorf("qiniu credentials (AK/SK) not configured for injection rule operations: please configure a qshell account via 'qshell user' or set %s/%s environment variables", EnvQiniuAccessKey, EnvQiniuSecretKey)
+	}
+
+	apiKey, endpoint := resolveConfig()
+	return buildSandboxClient(apiKey, endpoint, creds)
+}
+
+// buildSandboxClient constructs the underlying SDK client. apiKey may be empty
+// (only meaningful for InjectionRule paths); creds may be nil.
+func buildSandboxClient(apiKey, endpoint string, creds *auth.Credentials) (*sandbox.Client, error) {
 	return sandbox.NewClient(&sandbox.Config{
-		APIKey:   apiKey,
-		Endpoint: endpoint,
+		APIKey:      apiKey,
+		Credentials: creds,
+		Endpoint:    endpoint,
 		HTTPClient: &http.Client{
 			Transport: &keepaliveTransport{base: http.DefaultTransport},
 		},
@@ -97,6 +136,41 @@ func resolveConfig() (apiKey, endpoint string) {
 		endpoint = sandbox.DefaultEndpoint
 	}
 	return apiKey, endpoint
+}
+
+// workspaceAccountLookup is the seam used by resolveCredentials to fetch the
+// active qshell account. Production points it at workspace.GetAccount; tests
+// override it to inject deterministic credentials. Returns empty strings when
+// no active account is configured.
+var workspaceAccountLookup = func() (accessKey, secretKey string) {
+	acc, err := workspace.GetAccount()
+	if err != nil {
+		return "", ""
+	}
+	return acc.AccessKey, acc.SecretKey
+}
+
+// resolveCredentials returns AK/SK credentials, preferring the active qshell
+// account over environment variables. Returns nil when neither source provides
+// a complete pair.
+//
+// Source priority:
+//  1. workspace.GetAccount() — the active qshell account loaded from ~/.qshell.
+//     Requires the caller (cmd layer) to have invoked iqshell.CheckAndLoad first.
+//     Note: we read the account directly instead of workspace.GetConfig().Credentials
+//     because Load() rebuilds cfg via Merge with defaultConfig(), which overwrites
+//     the credentials populated by loadUserInfo().
+//  2. QINIU_ACCESS_KEY / QINIU_SECRET_KEY environment variables.
+func resolveCredentials() *auth.Credentials {
+	ak, sk := workspaceAccountLookup()
+	if ak == "" || sk == "" {
+		ak = os.Getenv(EnvQiniuAccessKey)
+		sk = os.Getenv(EnvQiniuSecretKey)
+	}
+	if ak == "" || sk == "" {
+		return nil
+	}
+	return &auth.Credentials{AccessKey: ak, SecretKey: []byte(sk)}
 }
 
 // ResumeSandbox resumes a paused sandbox by calling POST /sandboxes/{id}/resume.

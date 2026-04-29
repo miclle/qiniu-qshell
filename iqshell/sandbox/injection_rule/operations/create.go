@@ -35,7 +35,7 @@ func Create(info CreateInfo) {
 		return
 	}
 
-	client, err := sbClient.NewSandboxClient()
+	client, err := sbClient.NewInjectionRuleClient()
 	if err != nil {
 		sbClient.PrintError("%v", err)
 		return

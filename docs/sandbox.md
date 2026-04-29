@@ -18,11 +18,24 @@ $ qshell sandbox --doc
 ```
 
 # 鉴权
-需要配置环境变量：
-- `QINIU_API_KEY` 或 `E2B_API_KEY`：API 密钥（必填）
+sandbox 命令同时支持两套凭据，按子命令所需自动选择：
+
+| 子命令 | 鉴权方式 |
+| --- | --- |
+| `sandbox` 实例操作（list/create/connect/exec/...）、`template` 系列 | API Key |
+| `injection-rule` 系列（list/create/get/update/delete） | AK/SK |
+
+## API Key
+配置以下任一环境变量（也支持当前目录下的 `.env` 文件），优先级 `QINIU_*` > `E2B_*`：
+- `QINIU_API_KEY` 或 `E2B_API_KEY`：API 密钥
 - `QINIU_SANDBOX_API_URL` 或 `E2B_API_URL`：API 服务地址（可选）
 
-优先级：`QINIU_*` > `E2B_*`
+## AK/SK
+按以下优先级解析，**qshell 账号优先于环境变量**：
+1. `qshell user` 配置的当前账号（推荐方式）
+2. 环境变量 `QINIU_ACCESS_KEY` / `QINIU_SECRET_KEY`
+
+> 同时配置 API Key 与 AK/SK 时互不冲突，每个端点会按 SDK 既定方式选择对应鉴权。当某子命令所需的凭据缺失时，会给出明确报错。
 
 # 子命令
 sandbox 的子命令有：

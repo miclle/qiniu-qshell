@@ -15,6 +15,14 @@ $ qshell sandbox injection-rule -h
 $ qshell sandbox injection-rule --doc
 ```
 
+# 鉴权
+注入规则属于用户级资源，使用 AK/SK 鉴权（与七牛对象存储等命令一致）。优先级：
+
+1. `qshell user` 配置的当前账号
+2. 环境变量 `QINIU_ACCESS_KEY` / `QINIU_SECRET_KEY`
+
+未配置 AK/SK 时执行子命令会得到明确报错，提示通过 `qshell user` 添加账号或设置环境变量。
+
 # 子命令
 
 `injection-rule` 的子命令有：

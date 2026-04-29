@@ -56,7 +56,7 @@ var templateListCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx tpl ls --format json`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateListType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			operations.List(info)
@@ -81,7 +81,7 @@ var templateGetCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx tpl gt`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateGetType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			id := ""
@@ -110,16 +110,12 @@ var templateDeleteCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sandbox template delete tmpl-aaa tmpl-bbb -y
   qshell sbx tpl dl tmpl-aaa tmpl-bbb -y
 
-  # Interactively select templates to delete
-  qshell sandbox template delete -s
-  qshell sbx tpl dl -s
-
   # Delete the template recorded in qshell.sandbox.toml
   qshell sandbox template delete -y
   qshell sbx tpl dl -y`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateDeleteType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.TemplateIDs = args
@@ -127,7 +123,6 @@ var templateDeleteCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&info.Yes, "yes", "y", false, "skip confirmation")
-	cmd.Flags().BoolVarP(&info.Select, "select", "s", false, "interactively select templates to delete")
 	return cmd
 }
 
@@ -141,7 +136,7 @@ var templateBuildsCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx tpl bds tmpl-xxxxxxxxxxxx build-xxxxxxxxxxxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateBuildsType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			if len(args) != 2 {
@@ -213,7 +208,7 @@ because the rebuild API must carry the Dockerfile content in the request body.
   qshell sbx tpl bd --config ./configs/prod.toml --wait`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateBuildType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.NoCacheChanged = cmd.Flags().Changed("no-cache")
@@ -246,16 +241,12 @@ var templatePublishCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sandbox template publish tmpl-xxxxxxxxxxxx -y
   qshell sbx tpl pb tmpl-xxxxxxxxxxxx -y
 
-  # Interactively select templates to publish
-  qshell sandbox template publish -s
-  qshell sbx tpl pb -s
-
   # Publish the template recorded in qshell.sandbox.toml
   qshell sandbox template publish -y
   qshell sbx tpl pb -y`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplatePublishType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.TemplateIDs = args
@@ -263,7 +254,6 @@ var templatePublishCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&info.Yes, "yes", "y", false, "skip confirmation")
-	cmd.Flags().BoolVarP(&info.Select, "select", "s", false, "interactively select templates")
 	return cmd
 }
 
@@ -277,16 +267,12 @@ var templateUnpublishCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sandbox template unpublish tmpl-xxxxxxxxxxxx -y
   qshell sbx tpl upb tmpl-xxxxxxxxxxxx -y
 
-  # Interactively select templates to unpublish
-  qshell sandbox template unpublish -s
-  qshell sbx tpl upb -s
-
   # Unpublish the template recorded in qshell.sandbox.toml
   qshell sandbox template unpublish -y
   qshell sbx tpl upb -y`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateUnpublishType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.TemplateIDs = args
@@ -294,7 +280,6 @@ var templateUnpublishCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&info.Yes, "yes", "y", false, "skip confirmation")
-	cmd.Flags().BoolVarP(&info.Select, "select", "s", false, "interactively select templates")
 	return cmd
 }
 
@@ -305,20 +290,16 @@ var templateInitCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		Aliases: []string{"it"},
 		Short:   "Initialize a new template project (alias: it)",
 		Long:    "Scaffold a new template project with boilerplate files for the selected language.",
-		Example: `  # Interactive mode
-  qshell sandbox template init
-  qshell sbx tpl it
-
-  # Non-interactive mode
+		Example: `  # Initialize a Go project
   qshell sandbox template init --name my-template --language go
   qshell sbx tpl it --name my-template --language go
 
-  # Non-interactive mode with custom path
+  # Initialize at a custom path
   qshell sandbox template init --name my-api --language typescript --path ./my-api
   qshell sbx tpl it --name my-api --language typescript --path ./my-api`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxTemplateInitType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			operations.Init(info)

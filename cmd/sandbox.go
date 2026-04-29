@@ -68,7 +68,7 @@ var sandboxListCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx ls -f json`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxListType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			operations.List(info)
@@ -124,7 +124,7 @@ var sandboxCreateCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxCreateType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			if len(args) > 0 {
@@ -153,7 +153,7 @@ var sandboxConnectCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx cn sb-xxxxxxxxxxxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxConnectType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			if len(args) != 1 {
@@ -191,7 +191,7 @@ var sandboxKillCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx kl -a -s paused -m env=dev`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxKillType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.SandboxIDs = args
@@ -231,7 +231,7 @@ var sandboxLogsCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx lg sb-xxxxxxxxxxxx --format json`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxLogsType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			if len(args) != 1 {
@@ -269,7 +269,7 @@ var sandboxMetricsCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx mt sb-xxxxxxxxxxxx --format json`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxMetricsType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			if len(args) != 1 {
@@ -308,7 +308,7 @@ var sandboxPauseCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx ps -a -m env=dev`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxPauseType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.SandboxIDs = args
@@ -344,7 +344,7 @@ var sandboxResumeCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx rs -a -m env=staging`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxResumeType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.SandboxIDs = args
@@ -386,7 +386,7 @@ var sandboxExecCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		DisableFlagParsing: false,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxExecType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			if len(args) < 1 {

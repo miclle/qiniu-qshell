@@ -15,7 +15,7 @@ type ListInfo struct {
 
 // List lists all injection rules.
 func List(info ListInfo) {
-	client, err := sbClient.NewSandboxClient()
+	client, err := sbClient.NewInjectionRuleClient()
 	if err != nil {
 		sbClient.PrintError("%v", err)
 		return

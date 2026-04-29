@@ -52,7 +52,7 @@ var injectionRuleListCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx ir ls --format json`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxInjectionRuleListType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			operations.List(info)
@@ -73,7 +73,7 @@ var injectionRuleGetCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx ir gt rule-xxxxxxxxxxxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxInjectionRuleGetType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			operations.Get(operations.GetInfo{
@@ -106,7 +106,7 @@ var injectionRuleCreateCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx ir cr --name qiniu-ai --type qiniu --api-key ak-xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxInjectionRuleCreateType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			operations.Create(info)
@@ -146,7 +146,7 @@ var injectionRuleUpdateCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
   qshell sbx ir up rule-xxxxxxxxxxxx --type qiniu --api-key ak-new`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxInjectionRuleUpdateType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
 			info.RuleID = args[0]
@@ -173,17 +173,13 @@ var injectionRuleDeleteCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 
   # Delete multiple rules
   qshell sandbox injection-rule delete rule-aaa rule-bbb -y
-  qshell sbx ir dl rule-aaa rule-bbb -y
-
-  # Interactively select rules to delete
-  qshell sandbox injection-rule delete -s
-  qshell sbx ir dl -s`,
+  qshell sbx ir dl rule-aaa rule-bbb -y`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg.CmdCfg.CmdId = docs.SandboxInjectionRuleDeleteType
-			if iqshell.ShowDocumentIfNeeded(cfg) {
+			if !iqshell.CheckAndLoad(cfg, iqshell.CheckAndLoadInfo{}) {
 				return
 			}
-			if len(args) == 0 && !info.Select {
+			if len(args) == 0 {
 				_ = cmd.Usage()
 				return
 			}
@@ -192,7 +188,6 @@ var injectionRuleDeleteCmdBuilder = func(cfg *iqshell.Config) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&info.Yes, "yes", "y", false, "skip confirmation")
-	cmd.Flags().BoolVarP(&info.Select, "select", "s", false, "interactively select rules to delete")
 	return cmd
 }
 

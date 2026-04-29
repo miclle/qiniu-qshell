@@ -3,8 +3,8 @@
 
 # 格式
 ```
-qshell sandbox template unpublish [templateIDs...] [-y] [-s]
-qshell sbx tpl upb [templateIDs...] [-y] [-s]
+qshell sandbox template unpublish [templateIDs...] [-y]
+qshell sbx tpl upb [templateIDs...] [-y]
 ```
 
 # 帮助文档
@@ -17,9 +17,8 @@ $ qshell sandbox template unpublish --doc
 需要配置 `QINIU_API_KEY` 或 `E2B_API_KEY` 环境变量。
 
 # 参数
-- `templateIDs`：一个或多个模板 ID。未传入且未使用 `--select` 时，自动读取当前目录 `qshell.sandbox.toml` 中的 `template_id`
+- `templateIDs`：一个或多个模板 ID。未传入时，自动读取当前目录 `qshell.sandbox.toml` 中的 `template_id`
 - `-y, --yes`：跳过确认提示
-- `-s, --select`：交互式选择模板
 
 # 示例
 1. 取消发布单个模板
@@ -33,13 +32,12 @@ $ qshell sbx tpl upb tmpl-xxxxxxxxxxxx -y
 $ qshell sandbox template unpublish tmpl-aaa tmpl-bbb -y
 ```
 
-3. 交互式选择
-```
-$ qshell sandbox template unpublish -s
-```
-
-4. 取消发布当前目录配置文件对应的模板
+3. 取消发布当前目录配置文件对应的模板
 ```
 $ qshell sandbox template unpublish -y
 $ qshell sbx tpl upb -y
 ```
+
+# 非交互式调用（CI / AI Agent / 管道）
+
+当 stdin 不是终端时，缺省的确认提示会立即报错并退出。自动化场景必须传 `-y` / `--yes`。

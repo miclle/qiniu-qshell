@@ -19,7 +19,7 @@ func Get(info GetInfo) {
 		return
 	}
 
-	client, err := sbClient.NewSandboxClient()
+	client, err := sbClient.NewInjectionRuleClient()
 	if err != nil {
 		sbClient.PrintError("%v", err)
 		return

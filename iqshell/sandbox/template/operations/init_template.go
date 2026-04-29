@@ -2,11 +2,7 @@ package operations
 
 import (
 	"fmt"
-	"os"
 	"regexp"
-
-	"github.com/charmbracelet/huh"
-	"golang.org/x/term"
 
 	sbClient "github.com/qiniu/qshell/v2/iqshell/sandbox"
 )
@@ -25,57 +21,19 @@ type InitInfo struct {
 }
 
 // Init initializes a new template project with scaffolded files.
-// When parameters are not provided, uses interactive prompts.
+// Both --name and --language are required (no interactive prompts).
 func Init(info InitInfo) {
 	name := info.Name
 	language := info.Language
 	path := info.Path
 
-	// Interactive prompts if args are missing
-	if name == "" || language == "" {
-		// Require TTY for interactive mode
-		if !term.IsTerminal(int(os.Stdin.Fd())) {
-			sbClient.PrintError("--name and --language are required in non-interactive mode")
-			return
-		}
-
-		var fields []huh.Field
-
-		if name == "" {
-			fields = append(fields,
-				huh.NewInput().
-					Title("Template name").
-					Description("Lowercase alphanumeric, hyphens and underscores allowed").
-					Value(&name).
-					Validate(func(s string) error {
-						if !validNamePattern.MatchString(s) {
-							return fmt.Errorf("name must match pattern: [a-z0-9][a-z0-9_-]*")
-						}
-						return nil
-					}),
-			)
-		}
-
-		if language == "" {
-			langOptions := make([]huh.Option[string], 0, len(supportedLanguages))
-			for _, lang := range supportedLanguages {
-				langOptions = append(langOptions, huh.NewOption(lang, lang))
-			}
-			fields = append(fields,
-				huh.NewSelect[string]().
-					Title("Programming language").
-					Options(langOptions...).
-					Value(&language),
-			)
-		}
-
-		if len(fields) > 0 {
-			form := huh.NewForm(huh.NewGroup(fields...))
-			if fErr := form.Run(); fErr != nil {
-				sbClient.PrintError("cancelled: %v", fErr)
-				return
-			}
-		}
+	if name == "" {
+		sbClient.PrintError("--name is required")
+		return
+	}
+	if language == "" {
+		sbClient.PrintError("--language is required (supported: go, typescript, python)")
+		return
 	}
 
 	// Validate name
