@@ -48,3 +48,14 @@ $ qshell sandbox injection-rule delete rule-aaa rule-bbb -y
 ```bash
 $ qshell sandbox injection-rule delete -s
 ```
+
+# 非交互式调用（CI / AI Agent / 管道）
+
+当 stdin 不是终端时（CI、`docker run` 不带 `-it`、`exec` 调用、管道等），交互式分支会立即报错并退出，不会卡住进程：
+
+- 必须显式传入规则 ID（不能用 `--select`）
+- 必须传 `-y` / `--yes` 跳过确认
+
+```bash
+$ qshell sandbox injection-rule delete rule-xxxxxxxxxxxx -y
+```

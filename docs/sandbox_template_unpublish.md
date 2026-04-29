@@ -43,3 +43,10 @@ $ qshell sandbox template unpublish -s
 $ qshell sandbox template unpublish -y
 $ qshell sbx tpl upb -y
 ```
+
+# 非交互式调用（CI / AI Agent / 管道）
+
+当 stdin 不是终端时，交互式分支会立即报错并退出，不会卡住进程：
+
+- 必须显式传入模板 ID 或依赖 `qshell.sandbox.toml`（不能用 `--select`）
+- 必须传 `-y` / `--yes` 跳过确认

@@ -2,11 +2,9 @@ package operations
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/charmbracelet/huh"
-	"golang.org/x/term"
 
 	sbClient "github.com/qiniu/qshell/v2/iqshell/sandbox"
 )
@@ -34,7 +32,7 @@ func Init(info InitInfo) {
 	// Interactive prompts if args are missing
 	if name == "" || language == "" {
 		// Require TTY for interactive mode
-		if !term.IsTerminal(int(os.Stdin.Fd())) {
+		if !sbClient.IsInteractive() {
 			sbClient.PrintError("--name and --language are required in non-interactive mode")
 			return
 		}

@@ -43,6 +43,10 @@ func Delete(info DeleteInfo) {
 
 	// Interactive selection mode
 	if info.Select {
+		if !sbClient.IsInteractive() {
+			sbClient.PrintError("--select requires an interactive terminal; pass template IDs as arguments in non-interactive mode")
+			return
+		}
 		templates, lErr := client.ListTemplates(ctx, nil)
 		if lErr != nil {
 			sbClient.PrintError("list templates failed: %v", lErr)
@@ -88,6 +92,10 @@ func Delete(info DeleteInfo) {
 	}
 
 	if !info.Yes {
+		if !sbClient.IsInteractive() {
+			sbClient.PrintError("confirmation required but stdin is not a terminal; pass --yes to confirm in non-interactive mode")
+			return
+		}
 		fmt.Printf("Are you sure you want to delete %d template(s)? [y/N] ", len(templateIDs))
 		var confirm string
 		fmt.Scanln(&confirm)

@@ -29,6 +29,10 @@ func Delete(info DeleteInfo) {
 	ruleIDs := info.RuleIDs
 
 	if info.Select {
+		if !sbClient.IsInteractive() {
+			sbClient.PrintError("--select requires an interactive terminal; pass rule IDs as arguments in non-interactive mode")
+			return
+		}
 		rules, lErr := client.ListInjectionRules(ctx)
 		if lErr != nil {
 			sbClient.PrintError("list injection rules failed: %v", lErr)
@@ -71,6 +75,10 @@ func Delete(info DeleteInfo) {
 	}
 
 	if !info.Yes {
+		if !sbClient.IsInteractive() {
+			sbClient.PrintError("confirmation required but stdin is not a terminal; pass --yes to confirm in non-interactive mode")
+			return
+		}
 		var confirm bool
 		form := huh.NewForm(
 			huh.NewGroup(

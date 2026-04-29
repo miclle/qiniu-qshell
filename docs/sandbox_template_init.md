@@ -51,3 +51,7 @@ $ qshell sandbox template init --name my-api --language typescript --path ./my-a
 ```
 $ qshell sandbox template init --name my-script --language python
 ```
+
+# 非交互式调用（CI / AI Agent / 管道）
+
+当 stdin 不是终端时，必须显式传入 `--name` 和 `--language`，否则会立即报错并退出。

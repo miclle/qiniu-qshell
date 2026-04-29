@@ -50,6 +50,10 @@ func Publish(info PublishInfo) {
 
 	// Interactive selection mode
 	if info.Select {
+		if !sbClient.IsInteractive() {
+			sbClient.PrintError("--select requires an interactive terminal; pass template IDs as arguments in non-interactive mode")
+			return
+		}
 		templates, lErr := client.ListTemplates(ctx, nil)
 		if lErr != nil {
 			sbClient.PrintError("list templates failed: %v", lErr)
@@ -100,6 +104,10 @@ func Publish(info PublishInfo) {
 	}
 
 	if !info.Yes {
+		if !sbClient.IsInteractive() {
+			sbClient.PrintError("confirmation required but stdin is not a terminal; pass --yes to confirm in non-interactive mode")
+			return
+		}
 		fmt.Printf("Are you sure you want to %s %d template(s)? [y/N] ", action, len(templateIDs))
 		var confirm string
 		fmt.Scanln(&confirm)

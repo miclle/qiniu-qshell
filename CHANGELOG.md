@@ -2,6 +2,7 @@
 ## 更新
 1. `qshell sandbox` 系列命令接入 qshell 账号体系：执行前自动加载工作区，AK/SK 优先取自 `qshell user` 配置的当前账号，环境变量 `QINIU_ACCESS_KEY` / `QINIU_SECRET_KEY` 作为兜底
 2. `qshell sandbox injection-rule` 子命令现在使用 AK/SK 鉴权（与 go-sdk 设计对齐），`sandbox` / `template` 子命令仍使用 API Key；当所需凭据缺失时给出明确提示
+3. `qshell sandbox` 系列交互式分支（`--select` 多选与确认提示）在非 TTY 环境（CI、AI Agent、管道、后台）下立即报错退出，避免进程挂起；自动化场景需显式传入 ID 与 `--yes`
 
 # 2.19.4
 ## 新增
